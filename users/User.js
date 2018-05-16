@@ -10,22 +10,26 @@ const userSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    required: true
+    required: true,
+    minlength: 12
   }
 });
 
 userSchema.pre("save", function(next) {
-  bcrypt.hash(this.password, 11, (err, hash) => {
-    if (err) {
+  return bcrypt
+    .hash(this.password, 10)
+    .then(hash => {
+      this.password = hash;
+
+      return next();
+    })
+    .catch(err => {
       return next(err);
-    }
-    this.password = hash;
-    return next();
-  });
+    });
 });
 
 userSchema.methods.comparePassword = function(passwordGuess) {
   return bcrypt.compare(passwordGuess, this.password);
 };
 
-module.exports = mongoose.model("User", userSchema);
+module.exports = mongoose.model("User", userSchema, "users");

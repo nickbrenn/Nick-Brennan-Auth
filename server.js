@@ -1,10 +1,8 @@
 const express = require("express");
 const helmet = require("helmet");
 const mongoose = require("mongoose");
-const session = require("express-session");
-const MongoStore = require("connect-mongo")(session);
 
-const User = require("./user");
+const User = require("./users/User");
 
 mongoose
   .connect("mongodb://localhost/authdb")
@@ -13,33 +11,16 @@ mongoose
 
 const server = express();
 
-function authenticate(req, res, next) {
-  if (req.session && req.session.username) {
-    next();
-  } else {
-    res.status(401).send("You shall not pass!!!");
-  }
-}
-
-const sessionConfig = {
-  secret: "nobody tosses a dwarf!",
-  cookie: {
-    maxAge: 1 * 24 * 60 * 60 * 1000
-  },
-  httpOnly: true,
-  secure: false,
-  resave: true,
-  saveUninitialized: false,
-  name: "noname",
-  store: new MongoStore({
-    url: "mongodb://localhost/sessions",
-    ttl: 60 * 10
-  })
-};
+// function authenticate(req, res, next) {
+//   if (req.session && req.session.username) {
+//     next();
+//   } else {
+//     res.status(401).send("You shall not pass!!!");
+//   }
+// }
 
 server.use(helmet());
 server.use(express.json());
-server.use(session(sessionConfig));
 
 server.get("/", (req, res) => {
   res.send({ route: "/", message: req.message });
@@ -60,7 +41,6 @@ server.post("/login", (req, res) => {
       if (user) {
         user.comparePassword(password).then(isMatch => {
           if (isMatch) {
-            req.session.username = user.username;
             res.send("login successful");
           } else {
             res.status(401).send("invalid credentials");
@@ -76,18 +56,6 @@ server.post("/login", (req, res) => {
 
 server.get("/users", authenticate, (req, res) => {
   User.find().then(users => res.send(users));
-});
-
-server.get("/logout", (req, res) => {
-  if (req.session) {
-    req.session.destroy(function(err) {
-      if (err) {
-        res.send("LOGOUT ERROR");
-      } else {
-        res.send("Thou art rightly logged out my dude");
-      }
-    });
-  }
 });
 
 const port = process.env.PORT || 5000;
